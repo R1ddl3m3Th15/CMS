@@ -13,7 +13,7 @@ app.use(bodyParser.json());
 app.use("/user", userRoutes);
 // app.use("/policies", policyRoutes);
 app.use("/claims", claimRoutes);
-// app.use("/admin", adminRoutes);
+app.use("/admin", adminRoutes);
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);

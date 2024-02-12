@@ -56,6 +56,7 @@ exports.createClaim = (req, res) => {
     claimReason,
     claimAmount,
     remainingAmount,
+    billsApproved,
     status: "Pending",
     requestDate: new Date().toISOString(), // Current date in ISO format
   };

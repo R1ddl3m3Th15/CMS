@@ -146,4 +146,46 @@ exports.selectPolicy = (req, res) => {
   });
 };
 
-// exports.getClaimHistory = (req, res) => {};
+exports.getClaimHistory = (req, res) => {
+  const { userId } = req.params; // Extract userId from request parameters
+
+  // Verify the user exists
+  const user = db.users.find((user) => user.id === userId);
+  if (!user) {
+    return res.status(404).json({ message: "User not found." });
+  }
+
+  // Filter claims made by the user
+  const userClaims = db.claims.filter((claim) => claim.userId === userId);
+
+  // Aggregate claim details with policy details
+  const claimHistory = userClaims.map((claim) => {
+    const policy = user.policies.find(
+      (policy) => policy.insuranceId === claim.insuranceId
+    );
+    return {
+      policyDetails: policy
+        ? {
+            insuranceId: policy.insuranceId,
+            provider: policy.provider,
+            category: policy.category,
+            coverageAmount: policy.coverageAmount,
+            premium: policy.premium,
+            tenure: policy.tenure,
+          }
+        : null,
+      claimDetails: {
+        claimId: claim.claimId,
+        claimReason: claim.claimReason,
+        claimAmount: claim.claimAmount,
+        status: claim.status,
+        rejectionReason:
+          claim.status === "Rejected" ? claim.rejectionReason : undefined,
+        requestDate: claim.requestDate,
+      },
+    };
+  });
+
+  // Respond with the user's claim history
+  res.status(200).json(claimHistory);
+};
