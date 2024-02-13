@@ -1,4 +1,4 @@
-const db = require("../data/db");
+const User = require("../models/User");
 const { v4: uuidv4 } = require("uuid");
 const bcrypt = require("bcryptjs");
 
