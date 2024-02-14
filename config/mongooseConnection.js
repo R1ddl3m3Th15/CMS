@@ -1,14 +1,9 @@
 const mongoose = require("mongoose");
 
-const mongoURI = "mongodb://localhost:27017/claimsManagementSystem"; // Update URI as needed
-
-const options = {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-};
+const mongoURI = "mongodb://127.0.0.1:27017/claimsManagementSystem"; // Update URI as needed
 
 mongoose
-  .connect(mongoURI, options)
+  .connect(mongoURI)
   .then(() => console.log("MongoDB connected..."))
   .catch((err) => console.error("MongoDB connection error:", err));
 
