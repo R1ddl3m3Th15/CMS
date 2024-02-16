@@ -73,57 +73,57 @@ exports.deletePolicy = async (req, res) => {
 
 // ********************* for user access only *****************************
 
-// exports.selectPolicy = (req, res) => {
-//   const { serialNo, userId } = req.body;
+exports.selectPolicy = (req, res) => {
+  const { serialNo, userId } = req.body;
 
-//   // Check for required fields
-//   if (!serialNo || !userId) {
-//     return res
-//       .status(400)
-//       .json({ message: "Both Serial No. and User Id are required." });
-//   }
+  // Check for required fields
+  if (!serialNo || !userId) {
+    return res
+      .status(400)
+      .json({ message: "Both Serial No. and User Id are required." });
+  }
 
-//   // Verify the user exists
-//   const user = db.users.find((user) => user.id === userId);
-//   if (!user) {
-//     return res.status(404).json({ message: "User not found." });
-//   }
+  // Verify the user exists
+  const user = db.users.find((user) => user.id === userId);
+  if (!user) {
+    return res.status(404).json({ message: "User not found." });
+  }
 
-//   // Find the policy using the provided Serial No.
-//   const policy = db.policies.find((p) => p.serialNo === serialNo);
-//   if (!policy) {
-//     return res
-//       .status(404)
-//       .json({ message: "Policy not found with the provided Serial No." });
-//   }
+  // Find the policy using the provided Serial No.
+  const policy = db.policies.find((p) => p.serialNo === serialNo);
+  if (!policy) {
+    return res
+      .status(404)
+      .json({ message: "Policy not found with the provided Serial No." });
+  }
 
-//   // Generate a unique Insurance ID
-//   const insuranceId = uuidv4();
+  // Generate a unique Insurance ID
+  const insuranceId = uuidv4();
 
-//   // Associate the policy and Insurance ID with the user
-//   const userPolicy = {
-//     ...policy,
-//     insuranceId: insuranceId,
-//   };
-//   if (!user.policies) {
-//     user.policies = [userPolicy];
-//   } else {
-//     user.policies.push(userPolicy);
-//   }
+  // Associate the policy and Insurance ID with the user
+  const userPolicy = {
+    ...policy,
+    insuranceId: insuranceId,
+  };
+  if (!user.policies) {
+    user.policies = [userPolicy];
+  } else {
+    user.policies.push(userPolicy);
+  }
 
-//   // Respond with success message and the generated Insurance ID
-//   res.status(200).json({
-//     message: "Policy selected successfully.",
-//     insuranceId: insuranceId,
-//     selectedPolicy: {
-//       serialNo: policy.serialNo,
-//       provider: policy.provider,
-//       category: policy.category,
-//       coverageAmount: policy.coverageAmount,
-//       premium: policy.premium,
-//       tenure: policy.tenure,
-//     },
-//   });
-// };
+  // Respond with success message and the generated Insurance ID
+  res.status(200).json({
+    message: "Policy selected successfully.",
+    insuranceId: insuranceId,
+    selectedPolicy: {
+      serialNo: policy.serialNo,
+      provider: policy.provider,
+      category: policy.category,
+      coverageAmount: policy.coverageAmount,
+      premium: policy.premium,
+      tenure: policy.tenure,
+    },
+  });
+};
 
-// exports.getPolicyById = (req, res) => {};
+exports.getPolicyById = (req, res) => {};
