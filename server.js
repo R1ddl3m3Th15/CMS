@@ -3,8 +3,8 @@ const express = require("express");
 require("./config/mongooseConnection");
 
 const userRoutes = require("./routes/userRoutes");
-const policyRoutes = require("./routes/policyRoutes");
-const claimRoutes = require("./routes/claimRoutes");
+// const policyRoutes = require("./routes/policyRoutes");
+// const claimRoutes = require("./routes/claimRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 
 const app = express();
@@ -15,7 +15,7 @@ app.use(express.json());
 app.use("/user", userRoutes);
 // app.use("/policies", policyRoutes);
 // app.use("/claims", claimRoutes);
-// app.use("/admin", adminRoutes);
+app.use("/admin", adminRoutes);
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
