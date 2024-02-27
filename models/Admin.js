@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
 const adminSchema = new mongoose.Schema({
+  adminId: { type: String, required: true, unique: true }, // Changed to uuid
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   fullName: { type: String, required: true },
@@ -26,4 +27,4 @@ adminSchema.methods.comparePassword = function (candidatePassword, cb) {
   });
 };
 
-module.exports = mongoose.model("User", adminSchema);
+module.exports = mongoose.model("Admin", adminSchema);

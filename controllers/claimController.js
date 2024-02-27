@@ -1,254 +1,282 @@
-// const db = require("../data/db");
-// const { v4: uuidv4 } = require("uuid");
+const { v4: uuidv4 } = require("uuid");
+const Claim = require("../models/Claim");
+const User = require("../models/User");
+const Policy = require("../models/Policy");
 
 // ************************** for user only ****************************
 
-// exports.createClaim = (req, res) => {
-//   const { insuranceId, claimReason, billsApproved, claimAmount } = req.body;
+exports.createClaim = async (req, res) => {
+  try {
+    const { userId, policyId, claimReason, billsApproved, claimAmount } =
+      req.body;
 
-//   // Validation checks
-//   if (!insuranceId) {
-//     return res.status(400).json({ message: "InsuranceId is required." });
-//   }
-//   if (!claimReason) {
-//     return res.status(400).json({ message: "Claim reason is required." });
-//   }
-//   if (billsApproved !== "Yes" && billsApproved !== "No") {
-//     return res
-//       .status(400)
-//       .json({ message: "Bills approved must be 'Yes' or 'No'." });
-//   }
-//   if (billsApproved === "No") {
-//     return res.status(400).json({
-//       message: "Cannot proceed with claim as bills are not approved.",
-//     });
-//   }
-//   if (!claimAmount || claimAmount <= 0) {
-//     return res.status(400).json({ message: "Invalid claim amount." });
-//   }
+    // Validation checks
+    if (
+      !userId ||
+      !policyId ||
+      !claimReason ||
+      !billsApproved ||
+      !claimAmount
+    ) {
+      return res.status(400).json({ message: "All fields are required." });
+    }
 
-//   // Find the policy by InsuranceId
-//   const user = db.users.find((user) =>
-//     user.policies.some((policy) => policy.insuranceId === insuranceId)
-//   );
-//   if (!user) {
-//     return res
-//       .status(404)
-//       .json({ message: "Policy not found with the provided InsuranceId." });
-//   }
-//   const policy = user.policies.find(
-//     (policy) => policy.insuranceId === insuranceId
-//   );
+    if (billsApproved !== "Yes" && billsApproved !== "No") {
+      return res
+        .status(400)
+        .json({ message: "Bills approved must be 'Yes' or 'No'." });
+    }
 
-//   // Check if claim amount exceeds coverage amount
-//   if (claimAmount > policy.coverageAmount) {
-//     return res
-//       .status(400)
-//       .json({ message: "Claim amount exceeds policy coverage amount." });
-//   }
+    if (billsApproved === "No") {
+      return res.status(400).json({
+        message: "Cannot proceed with claim as bills are not approved.",
+      });
+    }
 
-//   // Calculate remaining amount
-//   const remainingAmount = policy.coverageAmount - claimAmount;
+    if (claimAmount <= 0) {
+      return res.status(400).json({ message: "Invalid claim amount." });
+    }
 
-//   // Create the claim
-//   const newClaim = {
-//     claimId: uuidv4(),
-//     userId: user.id,
-//     insuranceId,
-//     claimReason,
-//     claimAmount,
-//     remainingAmount,
-//     billsApproved,
-//     status: "Pending",
-//     requestDate: new Date().toISOString(), // Current date in ISO format
-//   };
+    // Find the user and policy
+    const user = await User.findOne({ userId });
+    const policy = await Policy.findOne({ policyId });
 
-//   // Add the claim to the database
-//   db.claims.push(newClaim);
+    if (!user || !policy) {
+      return res.status(404).json({ message: "User or Policy not found." });
+    }
 
-//   // Respond with the created claim details
-//   res.status(201).json({
-//     message: "Claim created successfully.",
-//     claimDetails: {
-//       ...newClaim,
-//       userName: user.fullName,
-//       policyDetails: policy,
-//     },
-//   });
-// };
+    // Check if claim amount exceeds coverage amount
+    if (claimAmount > policy.coverageAmt) {
+      return res
+        .status(400)
+        .json({ message: "Claim amount exceeds policy coverage amount." });
+    }
 
-// exports.getClaimHistory = (req, res) => {
-//   const { userId } = req.params; // Extract userId from request parameters
+    // Calculate remaining amount
+    const remainingAmount = policy.coverageAmt - claimAmount;
 
-//   // Verify the user exists
-//   const user = db.users.find((user) => user.id === userId);
-//   if (!user) {
-//     return res.status(404).json({ message: "User not found." });
-//   }
+    // Generate claimId using uuid
+    const claimId = uuidv4();
 
-//   // Filter claims made by the user
-//   const userClaims = db.claims.filter((claim) => claim.userId === userId);
+    // Create the claim
+    const newClaim = new Claim({
+      userId,
+      policyId,
+      claimId,
+      coverageAmt: policy.coverageAmt,
+      claimReason,
+      claimAmt: claimAmount,
+      remAmt: remainingAmount,
+      billApp: billsApproved,
+      status: "Pending",
+    });
 
-//   // Aggregate claim details with policy details
-//   const claimHistory = userClaims.map((claim) => {
-//     const policy = user.policies.find(
-//       (policy) => policy.insuranceId === claim.insuranceId
-//     );
-//     return {
-//       policyDetails: policy
-//         ? {
-//             insuranceId: policy.insuranceId,
-//             provider: policy.provider,
-//             category: policy.category,
-//             coverageAmount: policy.coverageAmount,
-//             premium: policy.premium,
-//             tenure: policy.tenure,
-//           }
-//         : null,
-//       claimDetails: {
-//         claimId: claim.claimId,
-//         claimReason: claim.claimReason,
-//         claimAmount: claim.claimAmount,
-//         status: claim.status,
-//         rejectionReason:
-//           claim.status === "Rejected" ? claim.rejectionReason : undefined,
-//         requestDate: claim.requestDate,
-//       },
-//     };
-//   });
+    // Save the claim to the database
+    await newClaim.save();
 
-//   // Respond with the user's claim history
-//   res.status(200).json(claimHistory);
-// };
+    // Update the selectedClaims array in the user schema
+    user.selectedClaims.push(newClaim.claimId);
+    await user.save();
+
+    // Respond with the created claim details
+    res.status(201).json({
+      message: "Claim created successfully.",
+      claimDetails: newClaim,
+    });
+  } catch (error) {
+    console.error("Error creating claim:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to create claim.", error: error.message });
+  }
+};
+
+exports.getClaimHistory = async (req, res) => {
+  try {
+    const { userId } = req.params; // Extract userId from request parameters
+
+    // Verify the user exists}
+    const user = await User.findOne({ userId });
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    // Find all claims made by the user
+    const userClaims = await Claim.findOne({ userId });
+
+    // Aggregate claim details with policy details
+    const claimHistory = userClaims.map((claim) => {
+      return {
+        policyDetails: {
+          policyId: claim.policyId,
+          // You can include other policy details here if needed
+        },
+        claimDetails: {
+          claimId: claim.claimId,
+          claimReason: claim.claimReason,
+          claimAmount: claim.claimAmt,
+          status: claim.status,
+          rejectionReason:
+            claim.status === "Rejected" ? claim.rejReason : undefined,
+          requestDate: claim.reqDate,
+        },
+      };
+    });
+
+    // Respond with the user's claim history
+    res.status(200).json(claimHistory);
+  } catch (error) {
+    console.error("Error getting claim history:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to get claim history.", error: error.message });
+  }
+};
 
 // ***************************** for admin only *********************************
 
-// exports.getPendingClaims = (req, res) => {
-//   // Filter out claims that have "Pending" status
-//   const pendingClaims = db.claims.filter((claim) => claim.status === "Pending");
+exports.getPendingClaims = async (req, res) => {
+  try {
+    // Find all pending claims from the database
+    const pendingClaims = await Claim.find({ status: "Pending" });
 
-//   // For each pending claim, find the user and policy details
-//   const detailedPendingClaims = pendingClaims.map((claim) => {
-//     const user = db.users.find((user) => user.id === claim.userId);
-//     const policy = user
-//       ? user.policies.find((policy) => policy.insuranceId === claim.insuranceId)
-//       : null;
+    // Check if there are no pending claims
+    if (pendingClaims.length === 0) {
+      return res.status(404).json({ message: "No pending claims found." });
+    }
 
-//     return {
-//       claimId: claim.claimId,
-//       status: claim.status,
-//       requestDate: claim.requestDate,
-//       claimDetails: {
-//         claimReason: claim.claimReason,
-//         claimAmount: claim.claimAmount,
-//         billsApproved: claim.billsApproved,
-//       },
-//       user: user
-//         ? {
-//             userId: user.id,
-//             userName: user.fullName,
-//             userEmail: user.email,
-//             // Include other user details as needed
-//           }
-//         : "User not found",
-//       policy: policy
-//         ? {
-//             insuranceId: claim.insuranceId,
-//             provider: policy.provider,
-//             category: policy.category,
-//             coverageAmount: policy.coverageAmount,
-//             premium: policy.premium,
-//             tenure: policy.tenure,
-//           }
-//         : "Policy not found",
-//     };
-//   });
+    // Initialize an array to store detailed pending claims
+    const detailedPendingClaims = [];
 
-//   // Check if there are no pending claims
-//   if (detailedPendingClaims.length === 0) {
-//     return res.status(404).json({ message: "No pending claims found." });
-//   }
+    // For each pending claim, find the user and policy details
+    for (const claim of pendingClaims) {
+      const user = await User.findOne({ userId: claim.userId });
+      if (!user) {
+        continue; // Skip this claim if user not found
+      }
 
-//   // Respond with the list of detailed pending claims
-//   res.status(200).json(detailedPendingClaims);
-// };
+      // Fetch policy details directly using claim's policyId
+      const policy = await Policy.findOne({ policyId: claim.policyId });
+      if (!policy) {
+        continue; // Skip this claim if policy not found
+      }
+
+      // Construct the detailed pending claim object
+      const detailedClaim = {
+        claimId: claim.claimId,
+        status: claim.status,
+        requestDate: claim.reqDate,
+        claimDetails: {
+          claimReason: claim.claimReason,
+          claimAmount: claim.claimAmt,
+          billsApproved: claim.billApp,
+        },
+        user: {
+          userId: user.userId,
+          userName: user.fullName,
+          userEmail: user.email,
+          // Include other user details as needed
+        },
+        policy: {
+          policyId: policy.policyId,
+          provider: policy.provider,
+          category: policy.category,
+          coverageAmount: policy.coverageAmt,
+          premium: policy.premium,
+          tenure: policy.tenure,
+        },
+      };
+
+      detailedPendingClaims.push(detailedClaim);
+    }
+
+    // Respond with the list of detailed pending claims
+    res.status(200).json(detailedPendingClaims);
+  } catch (error) {
+    console.error("Error getting pending claims:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to get pending claims.", error: error.message });
+  }
+};
 
 // exports.getApprovedClaims = (req, res) => {};
 
-// // exports.getRejectedClaims = (req, res) => {};
+// exports.getRejectedClaims = (req, res) => {};
 
-// exports.approveClaim = (req, res) => {
-//   const { claimId } = req.params; // Extract claimId from request parameters
+exports.approveClaim = async (req, res) => {
+  try {
+    const { claimId } = req.params; // Extract claimId from request parameters
 
-//   // Find the claim in the database
-//   const claimIndex = db.claims.findIndex((claim) => claim.claimId === claimId);
+    // Find the claim in the database
+    const claim = await Claim.findOne({ claimId });
 
-//   // Verify the claim exists and is in "Pending" status
-//   if (claimIndex === -1) {
-//     return res.status(404).json({ message: "Claim not found." });
-//   }
+    // Verify the claim exists and is in "Pending" status
+    if (!claim || claim.status !== "Pending") {
+      return res
+        .status(404)
+        .json({ message: "Claim not found or not pending." });
+    }
 
-//   const claim = db.claims[claimIndex];
-//   if (claim.status !== "Pending") {
-//     return res
-//       .status(400)
-//       .json({ message: "Only pending claims can be approved." });
-//   }
+    // Update the claim's status to "Approved"
+    claim.status = "Approved";
+    await claim.save();
 
-//   // Update the claim's status to "Approved"
-//   db.claims[claimIndex].status = "Approved";
-//   //  db.claims[claimIndex].approvedAt = new Date().toISOString();
-//   // db.claims[claimIndex].approvedBy = req.adminId; // adminId from somewhere
+    res.status(200).json({
+      message: "Claim approved successfully.",
+      claim,
+    });
+  } catch (error) {
+    console.error("Error approving claim:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to approve claim.", error: error.message });
+  }
+};
 
-//   res.status(200).json({
-//     message: "Claim approved successfully.",
-//     claim: db.claims[claimIndex],
-//   });
-// };
+exports.rejectClaim = async (req, res) => {
+  try {
+    const { claimId } = req.params; // Extract claimId from request parameters
+    const { rejectionReason } = req.body; // Extract rejection reason from request body
 
-// exports.rejectClaim = (req, res) => {
-//   const { claimId } = req.params; // Extract claimId from request parameters
-//   const { rejectionReason } = req.body; // Assume the rejection reason is sent in the request body
+    // Ensure a rejection reason is provided
+    if (!rejectionReason) {
+      return res
+        .status(400)
+        .json({ message: "A reason for rejection is required." });
+    }
 
-//   // Ensure a rejection reason is provided
-//   if (!rejectionReason) {
-//     return res
-//       .status(400)
-//       .json({ message: "A reason for rejection is required." });
-//   }
+    // Find the claim in the database
+    const claim = await Claim.findOne({ claimId });
 
-//   // Find the claim in the database
-//   const claimIndex = db.claims.findIndex((claim) => claim.claimId === claimId);
+    // Verify the claim exists and is in "Pending" status
+    if (!claim || claim.status !== "Pending") {
+      return res
+        .status(404)
+        .json({ message: "Claim not found or not pending." });
+    }
 
-//   // Verify the claim exists and is in "Pending" status
-//   if (claimIndex === -1) {
-//     return res.status(404).json({ message: "Claim not found." });
-//   }
+    // Update the claim's status to "Rejected" and store the rejection reason
+    claim.status = "Rejected";
+    claim.rejReason = rejectionReason;
+    await claim.save();
 
-//   const claim = db.claims[claimIndex];
-//   if (claim.status !== "Pending") {
-//     return res
-//       .status(400)
-//       .json({ message: "Only pending claims can be rejected." });
-//   }
+    res.status(200).json({
+      message: "Claim rejected successfully.",
+      claim,
+    });
+  } catch (error) {
+    console.error("Error rejecting claim:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to reject claim.", error: error.message });
+  }
+};
 
-//   // Update the claim's status to "Rejected" and store the rejection reason
-//   db.claims[claimIndex].status = "Rejected";
-//   db.claims[claimIndex].rejectionReason = rejectionReason;
+// exports.getUserClaims = (req, res) => {};
 
-//   res.status(200).json({
-//     message: "Claim rejected successfully.",
-//     claim: {
-//       ...db.claims[claimIndex],
-//       rejectionReason: rejectionReason,
-//     },
-//   });
-// };
+// exports.getClaimById = (req, res) => {};
 
-// // exports.getUserClaims = (req, res) => {};
+// exports.updateClaim = (req, res) => {};
 
-// // exports.getClaimById = (req, res) => {};
-
-// // exports.updateClaim = (req, res) => {};
-
-// // exports.deleteClaim = (req, res) => {};
+// exports.deleteClaim = (req, res) => {};

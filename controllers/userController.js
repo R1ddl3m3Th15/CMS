@@ -1,5 +1,6 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
+const { v4: uuidv4 } = require("uuid");
 
 exports.registerUser = async (req, res) => {
   try {
@@ -50,8 +51,12 @@ exports.registerUser = async (req, res) => {
       return res.status(409).json({ message: "Username already taken." });
     }
 
+    // Generate a UUID for the new user
+    const userId = uuidv4();
+
     // Create a new user record
     const newUser = new User({
+      userId,
       username,
       password,
       fullName,
@@ -96,11 +101,9 @@ exports.loginUser = async (req, res) => {
     res.status(200).json({
       message: "Login successful.",
       user: {
-        id: user._id,
+        userId: user.userId, // Return userId obtained during registration
         username: user.username,
         fullName: user.fullName,
-        dob: user.dob,
-        address: user.address,
         email: user.email,
         // Provide the options that the user has on the home page
         options: ["Select Policy", "Make a Claim", "View Claim History"],

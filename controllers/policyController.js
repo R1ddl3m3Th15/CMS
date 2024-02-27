@@ -1,4 +1,6 @@
 const Policy = require("../models/Policy");
+const User = require("../models/User");
+const { v4: uuidv4 } = require("uuid");
 
 // *********************** for user/admin accesss ************************
 
@@ -6,7 +8,20 @@ exports.getAvailablePolicies = async (req, res) => {
   try {
     // Fetch all policies from the database
     const policies = await Policy.find({});
-    res.status(200).json(policies);
+
+    // Map the policies to include only necessary fields
+    const formattedPolicies = policies.map((policy) => {
+      return {
+        policyId: policy.policyId,
+        provider: policy.provider,
+        category: policy.category,
+        coverageAmt: policy.coverageAmt,
+        premium: policy.premium,
+        tenure: policy.tenure,
+      };
+    });
+
+    res.status(200).json(formattedPolicies);
   } catch (error) {
     console.error("Error fetching policies:", error);
     res.status(500).json({ message: "Failed to fetch policies" });
@@ -14,15 +29,20 @@ exports.getAvailablePolicies = async (req, res) => {
 };
 
 // **************** for admin access only *************************
+
 exports.addPolicies = async (req, res) => {
   try {
     // Destructuring assignment to unpack properties from req.body
-    const { provider, coverageAmount, premium } = req.body;
+    const { provider, coverageAmt, premium } = req.body;
+
+    // Generate a UUID for the new policy
+    const policyId = uuidv4();
 
     // Create a new policy object
     const policy = new Policy({
+      policyId,
       provider,
-      coverageAmount,
+      coverageAmt,
       premium,
     });
 
@@ -46,10 +66,16 @@ exports.updatePolicy = async (req, res) => {
   try {
     const { id } = req.params;
     const update = req.body;
-    const policy = await Policy.findByIdAndUpdate(id, update, { new: true });
+
+    // Find policy by policyId instead of _id
+    const policy = await Policy.findOneAndUpdate({ policyId: id }, update, {
+      new: true,
+    });
+
     if (!policy) {
       return res.status(404).json({ message: "Policy not found" });
     }
+
     res
       .status(200)
       .json({ message: "Policy updated successfully", data: policy });
@@ -61,69 +87,92 @@ exports.updatePolicy = async (req, res) => {
 exports.deletePolicy = async (req, res) => {
   try {
     const { id } = req.params;
-    const policy = await Policy.findByIdAndDelete(id);
+
+    // Delete policy based on policyId instead of _id
+    const policy = await Policy.findOneAndDelete({ policyId: id });
+
     if (!policy) {
       return res.status(404).json({ message: "Policy not found" });
     }
+
     res.status(200).json({ message: "Policy deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// ********************* for user access only *****************************
+exports.deleteAllPolicies = async (req, res) => {
+  try {
+    // Delete all policies from the database
+    await Policy.deleteMany({});
 
-exports.selectPolicy = (req, res) => {
-  const { serialNo, userId } = req.body;
-
-  // Check for required fields
-  if (!serialNo || !userId) {
-    return res
-      .status(400)
-      .json({ message: "Both Serial No. and User Id are required." });
+    // Respond with success message
+    res.status(200).json({ message: "All policies deleted successfully." });
+  } catch (error) {
+    // If an error occurs, respond with an error message
+    console.error("Error deleting policies:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to delete policies.", error: error.message });
   }
-
-  // Verify the user exists
-  const user = db.users.find((user) => user.id === userId);
-  if (!user) {
-    return res.status(404).json({ message: "User not found." });
-  }
-
-  // Find the policy using the provided Serial No.
-  const policy = db.policies.find((p) => p.serialNo === serialNo);
-  if (!policy) {
-    return res
-      .status(404)
-      .json({ message: "Policy not found with the provided Serial No." });
-  }
-
-  // Generate a unique Insurance ID
-  const insuranceId = uuidv4();
-
-  // Associate the policy and Insurance ID with the user
-  const userPolicy = {
-    ...policy,
-    insuranceId: insuranceId,
-  };
-  if (!user.policies) {
-    user.policies = [userPolicy];
-  } else {
-    user.policies.push(userPolicy);
-  }
-
-  // Respond with success message and the generated Insurance ID
-  res.status(200).json({
-    message: "Policy selected successfully.",
-    insuranceId: insuranceId,
-    selectedPolicy: {
-      serialNo: policy.serialNo,
-      provider: policy.provider,
-      category: policy.category,
-      coverageAmount: policy.coverageAmount,
-      premium: policy.premium,
-      tenure: policy.tenure,
-    },
-  });
 };
 
-exports.getPolicyById = (req, res) => {};
+// ********************* for user access only *****************************
+
+exports.selectPolicy = async (req, res) => {
+  const { policyId, userId } = req.body;
+
+  try {
+    // Check for required fields
+    if (!policyId || !userId) {
+      return res
+        .status(400)
+        .json({ message: "Both Policy ID and User ID are required." });
+    }
+
+    // Verify if the user exists
+    const user = await User.findOne({ userId });
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    // Find the policy using the provided Policy ID
+    const policy = await Policy.findOne({ policyId });
+    if (!policy) {
+      return res
+        .status(404)
+        .json({ message: "Policy not found with the provided Policy ID." });
+    }
+
+    // Associate the policy with the user by adding its ID to selectedPolicies array
+    user.selectedPolicies.push(policyId);
+    await user.save();
+
+    // Update the policy's userIds array
+    if (!policy.userIds.includes(userId)) {
+      policy.userIds.push(userId);
+    }
+
+    await policy.save();
+
+    // Respond with success message
+    res.status(200).json({
+      message: "Policy selected successfully.",
+      selectedPolicy: {
+        policyId: policy.policyId,
+        provider: policy.provider,
+        category: policy.category,
+        coverageAmt: policy.coverageAmt,
+        premium: policy.premium,
+        tenure: policy.tenure,
+      },
+    });
+  } catch (error) {
+    console.error("Error selecting policy:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to select policy", error: error.message });
+  }
+};
+
+//exports.getPolicyById = (req, res) => {};

@@ -1,27 +1,23 @@
-// will be used in admin registration and login
-
 const Admin = require("../models/Admin");
 const bcrypt = require("bcryptjs");
+const User = require("../models/User");
+const { v4: uuidv4 } = require("uuid");
 
 exports.registerAdmin = async (req, res) => {
   try {
-    // Destructure the necessary attributes from the request body
     const { username, password, fullName, aadharId, email } = req.body;
 
-    // Validate the input data (you can add more complex validations as needed)
     if (!username || !password || !fullName || !aadharId || !email) {
       return res.status(400).json({ message: "All fields are required." });
     }
 
-    // Regular expressions for validation
-    const usernameRegex = /^[A-Za-z][A-Za-z0-9_]{5,29}$/; // Start with a letter, and can include numbers and underscores
+    const usernameRegex = /^[A-Za-z][A-Za-z0-9_]{5,29}$/;
     const passwordRegex =
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/; // Strong password criteria
-    const nameRegex = /^[A-Za-z]+(\s[A-Za-z]+)*$/; // First name or first name and surname with English alphabets
-    const aadharRegex = /^\d{12}$/; // Aadhar ID must be 12 digits
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // Basic email format
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    const nameRegex = /^[A-Za-z]+(\s[A-Za-z]+)*$/;
+    const aadharRegex = /^\d{12}$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    // Validate the input data using regex
     if (!usernameRegex.test(username)) {
       return res.status(400).json({
         message:
@@ -31,7 +27,7 @@ exports.registerAdmin = async (req, res) => {
     if (!passwordRegex.test(password)) {
       return res.status(400).json({
         message:
-          "Password does not meet criteria. Must have atleast one lower and one upper case letter, one special character, one number.",
+          "Password does not meet criteria. Must have at least one lowercase and one uppercase letter, one special character, one number.",
       });
     }
     if (!nameRegex.test(fullName)) {
@@ -46,14 +42,15 @@ exports.registerAdmin = async (req, res) => {
       return res.status(400).json({ message: "Invalid email format." });
     }
 
-    // Check for existing user with the same username
     const existingAdmin = await Admin.findOne({ username });
     if (existingAdmin) {
       return res.status(409).json({ message: "Username already taken." });
     }
 
-    // Create a new user record
+    const adminId = uuidv4();
+
     const newAdmin = new Admin({
+      adminId,
       username,
       password,
       fullName,
@@ -62,11 +59,11 @@ exports.registerAdmin = async (req, res) => {
     });
 
     await newAdmin.save();
-    res.status(201).json({ message: "Admin registered successfully." }); // Respond with success message
+    res.status(201).json({ message: "Admin registered successfully." });
   } catch (error) {
     res.status(500).json({
       message: error.message || "An error occurred during registration.",
-    }); // Handle any other errors
+    });
   }
 };
 
@@ -74,42 +71,76 @@ exports.loginAdmin = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // Check for missing username or password
     if (!username || !password) {
       return res
         .status(400)
         .json({ message: "Username and password are required." });
     }
 
-    // Find the user by username
     const admin = await Admin.findOne({ username });
     if (!admin) {
       return res.status(401).json({ message: "Invalid credentials." });
     }
 
-    // Check if the password is correct
     const isMatch = await bcrypt.compare(password, admin.password);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials." });
     }
 
-    // Assuming login is successful, direct user to the Home Page
-    // In a real-world scenario, you'd issue a token using JWT or a session here
     res.status(200).json({
       message: "Login successful.",
-      user: {
-        id: admin._id,
+      admin: {
+        id: admin.adminId,
         username: admin.username,
         fullName: admin.fullName,
-        dob: admin.dob,
-        address: admin.address,
         email: admin.email,
-        // Provide the options that the user has on the home page
-        options: ["Select Policy", "Make a Claim", "View Claim History"],
+        options: ["View Users", "Manage Policies", "Process Claims"],
       },
     });
   } catch (error) {
-    // Handle any server error
     res.status(500).json({ message: "An error occurred during login." });
+  }
+};
+
+// Function to get all registered users
+exports.getAllUsers = async (req, res) => {
+  try {
+    // Fetch all users from the database
+    const users = await User.find({}, { password: 0 }); // Exclude password field from the response
+
+    if (users.length === 0) {
+      return res.status(404).json({ message: "No users found." });
+    }
+
+    // Respond with the list of users
+    res.status(200).json(users);
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    res.status(500).json({ message: "Failed to fetch users" });
+  }
+};
+
+// to delete a user from record
+exports.deleteUser = async (req, res) => {
+  const { userId } = req.params; // Extract userId from request parameters
+
+  try {
+    // Find the user by userId
+    const user = await User.findById(userId);
+
+    // Check if the user exists
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    // Delete the user
+    await User.findByIdAndDelete(userId);
+
+    res.status(200).json({ message: "User deleted successfully." });
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to delete user.", error: error.message });
   }
 };
