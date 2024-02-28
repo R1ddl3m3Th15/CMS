@@ -1,6 +1,7 @@
 const express = require("express");
 // Require Mongoose connection setup
 require("./config/mongooseConnection");
+const cors = require("cors");
 
 const userRoutes = require("./routes/userRoutes");
 // const policyRoutes = require("./routes/policyRoutes");
@@ -10,6 +11,7 @@ const adminRoutes = require("./routes/adminRoutes");
 const app = express();
 const port = 4000;
 
+app.use(cors());
 app.use(express.json());
 
 app.use("/user", userRoutes);
