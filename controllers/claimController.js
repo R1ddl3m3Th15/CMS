@@ -102,13 +102,26 @@ exports.getClaimHistory = async (req, res) => {
     }
 
     // Find all claims made by the user
-    const userClaims = await Claim.findOne({ userId });
+    const userClaims = await Claim.find({ userId });
+
+    // Check if there are claims found
+    if (!userClaims.length) {
+      return res
+        .status(404)
+        .json({ message: "No claims found for this user." });
+    }
 
     // Aggregate claim details with policy details
     const claimHistory = userClaims.map((claim) => {
       return {
         policyDetails: {
           policyId: claim.policyId,
+          // provider: claim.provider,
+          // category: claim.category,
+          coverageAmt: claim.coverageAmt,
+          // premium: claim.premium,
+          // tenure: claim.tenure,
+
           // You can include other policy details here if needed
         },
         claimDetails: {
@@ -200,9 +213,41 @@ exports.getPendingClaims = async (req, res) => {
   }
 };
 
-// exports.getApprovedClaims = (req, res) => {};
+exports.getApprovedClaims = async (req, res) => {
+  try {
+    const approvedClaims = await Claim.find({ status: "Approved" });
 
-// exports.getRejectedClaims = (req, res) => {};
+    if (approvedClaims.length === 0) {
+      return res.status(404).json({ message: "No approved claims found." });
+    }
+    res.json(approvedClaims);
+  } catch (error) {
+    console.error("Error getting approved claims:", error);
+    res.status(500).json({
+      message: "Failed to get approved claims.",
+      error: error.message,
+    });
+  }
+};
+
+exports.getRejectedClaims = async (req, res) => {
+  try {
+    // Fetch all claims with status 'Rejected'
+    const rejectedClaims = await Claim.find({ status: "Rejected" });
+
+    if (rejectedClaims.length === 0) {
+      return res.status(404).json({ message: "No rejected claims found." });
+    }
+
+    res.json(rejectedClaims);
+  } catch (error) {
+    console.error("Error fetching rejected claims:", error);
+    res.status(500).json({
+      message: "Failed to fetch rejected claims",
+      error: error.message,
+    });
+  }
+};
 
 exports.approveClaim = async (req, res) => {
   try {

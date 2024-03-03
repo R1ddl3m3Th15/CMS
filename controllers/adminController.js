@@ -90,7 +90,7 @@ exports.loginAdmin = async (req, res) => {
     res.status(200).json({
       message: "Login successful.",
       admin: {
-        id: admin.adminId,
+        adminId: admin.adminId,
         username: admin.username,
         fullName: admin.fullName,
         email: admin.email,
@@ -120,21 +120,34 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
+exports.getAllAdmins = async (req, res) => {
+  try {
+    // Fetch all users from the database
+    const admins = await Admin.find({}, { password: 0 }); // Exclude password field from the response
+
+    if (admins.length === 0) {
+      return res.status(404).json({ message: "No admins found." });
+    }
+
+    // Respond with the list of users
+    res.status(200).json(admins);
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    res.status(500).json({ message: "Failed to fetch admins" });
+  }
+};
+
 // to delete a user from record
 exports.deleteUser = async (req, res) => {
   const { userId } = req.params; // Extract userId from request parameters
 
   try {
-    // Find the user by userId
-    const user = await User.findById(userId);
+    // Delete user based on userId instead of MongoDB's _id
+    const user = await User.findOneAndDelete({ userId: userId });
 
-    // Check if the user exists
     if (!user) {
       return res.status(404).json({ message: "User not found." });
     }
-
-    // Delete the user
-    await User.findByIdAndDelete(userId);
 
     res.status(200).json({ message: "User deleted successfully." });
   } catch (error) {

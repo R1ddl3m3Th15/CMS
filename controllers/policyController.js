@@ -101,21 +101,21 @@ exports.deletePolicy = async (req, res) => {
   }
 };
 
-exports.deleteAllPolicies = async (req, res) => {
-  try {
-    // Delete all policies from the database
-    await Policy.deleteMany({});
+// exports.deleteAllPolicies = async (req, res) => {
+//   try {
+//     // Delete all policies from the database
+//     await Policy.deleteMany({});
 
-    // Respond with success message
-    res.status(200).json({ message: "All policies deleted successfully." });
-  } catch (error) {
-    // If an error occurs, respond with an error message
-    console.error("Error deleting policies:", error);
-    res
-      .status(500)
-      .json({ message: "Failed to delete policies.", error: error.message });
-  }
-};
+//     // Respond with success message
+//     res.status(200).json({ message: "All policies deleted successfully." });
+//   } catch (error) {
+//     // If an error occurs, respond with an error message
+//     console.error("Error deleting policies:", error);
+//     res
+//       .status(500)
+//       .json({ message: "Failed to delete policies.", error: error.message });
+//   }
+// };
 
 // ********************* for user access only *****************************
 
@@ -175,4 +175,89 @@ exports.selectPolicy = async (req, res) => {
   }
 };
 
-//exports.getPolicyById = (req, res) => {};
+exports.selectPolicybyId = async (req, res) => {
+  const { policyId } = req.body;
+  const { userId } = req.params;
+
+  try {
+    // Check for required fields
+    if (!policyId || !userId) {
+      return res
+        .status(400)
+        .json({ message: "Both Policy ID and User ID are required." });
+    }
+
+    // Verify if the user exists
+    const user = await User.findOne({ userId });
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    // Find the policy using the provided Policy ID
+    const policy = await Policy.findOne({ policyId });
+    if (!policy) {
+      return res
+        .status(404)
+        .json({ message: "Policy not found with the provided Policy ID." });
+    }
+
+    // Associate the policy with the user by adding its ID to selectedPolicies array
+    user.selectedPolicies.push(policyId);
+    await user.save();
+
+    // Update the policy's userIds array
+    if (!policy.userIds.includes(userId)) {
+      policy.userIds.push(userId);
+    }
+
+    await policy.save();
+
+    // Respond with success message
+    res.status(200).json({
+      message: "Policy selected successfully.",
+      selectedPolicy: {
+        policyId: policy.policyId,
+        provider: policy.provider,
+        category: policy.category,
+        coverageAmt: policy.coverageAmt,
+        premium: policy.premium,
+        tenure: policy.tenure,
+      },
+    });
+  } catch (error) {
+    console.error("Error selecting policy:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to select policy", error: error.message });
+  }
+};
+
+exports.getPolicyById = async (req, res) => {
+  try {
+    const { policyId } = req.params; // Assuming you're passing the policyId as a URL parameter
+
+    // Find the policy using the provided Policy ID
+    const policy = await Policy.findOne({ policyId });
+
+    if (!policy) {
+      return res
+        .status(404)
+        .json({ message: "Policy not found with the provided Policy ID." });
+    }
+
+    // Respond with the details of the policy
+    res.status(200).json({
+      policyId: policy.policyId,
+      provider: policy.provider,
+      category: policy.category,
+      coverageAmt: policy.coverageAmt,
+      premium: policy.premium,
+      tenure: policy.tenure,
+    });
+  } catch (error) {
+    console.error("Error fetching policy by ID:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to fetch policy by ID", error: error.message });
+  }
+};
