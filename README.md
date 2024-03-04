@@ -1,1 +1,1 @@
-# CMS (Stateless)
+# CMS (Stateful) + JWT
