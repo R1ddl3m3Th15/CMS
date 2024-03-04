@@ -1,6 +1,8 @@
+require("dotenv").config();
+
 const mongoose = require("mongoose");
 
-const mongoURI = "mongodb://127.0.0.1:27017/claimsManagementSystem"; // Update URI as needed
+const mongoURI = process.env.MONGODB_URI; // Update URI as needed
 
 mongoose
   .connect(mongoURI)
