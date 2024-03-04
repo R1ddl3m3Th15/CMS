@@ -5,19 +5,31 @@ const claimController = require("../controllers/claimController");
 const policyController = require("../controllers/policyController");
 const checkApiKey = require("../middlewares/apiKeyMiddleware");
 
-router.post("/register", userController.registerUser);
-router.post("/login", userController.loginUser);
-router.get("/policies/all", checkApiKey, policyController.getAvailablePolicies);
-router.post("/policies/select", checkApiKey, policyController.selectPolicy);
+router.post("/user/register", userController.registerUser);
+router.post("/user/login", userController.loginUser);
+router.get(
+  "/user/policies/all",
+  checkApiKey,
+  policyController.getAvailablePolicies
+);
 router.post(
-  "/:userId/policies/select",
+  "/user/policies/select",
+  checkApiKey,
+  policyController.selectPolicy
+);
+router.post(
+  "/user/:userId/policies/select",
   checkApiKey,
   policyController.selectPolicybyId
 );
-router.get("/policies/:policyId", checkApiKey, policyController.getPolicyById);
-router.post("/claims/create", checkApiKey, claimController.createClaim);
 router.get(
-  "/:userId/claims/history",
+  "/user/policies/:policyId",
+  checkApiKey,
+  policyController.getPolicyById
+);
+router.post("/user/claims/create", checkApiKey, claimController.createClaim);
+router.get(
+  "/user/:userId/claims/history",
   checkApiKey,
   claimController.getClaimHistory
 );
