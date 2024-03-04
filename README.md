@@ -1,1 +1,1 @@
-# CMS (Stateful) + JWT
+# CMS (Stateful) + API Keys
