@@ -5,10 +5,10 @@
     "description": "API for managing insurance claims, policies, and user/admin accounts within the Claims Management System.",
     "version": "1.0.0"
   },
-  "host": "localhost:4000",
+  "host": "cmsbackendnew.onrender.com",
   "basePath": "/",
   "schemes": [
-    "http"
+    "https"
   ],
   "paths": {
     "/user/register": {

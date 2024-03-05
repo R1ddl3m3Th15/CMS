@@ -6,8 +6,9 @@ const doc = {
     description:
       "API for managing insurance claims, policies, and user/admin accounts within the Claims Management System.",
   },
-  host: "localhost:4000",
-  schemes: ["http"],
+  host: "cmsbackendnew.onrender.com",
+  schemes: ["https"],
+  basePath: "/",
 };
 
 const outputFile = "./swagger_output.json";
