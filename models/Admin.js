@@ -1,14 +1,19 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
-const adminSchema = new mongoose.Schema({
-  adminId: { type: String, required: true, unique: true }, // Changed to uuid
-  username: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  fullName: { type: String, required: true },
-  aadharId: { type: String, required: true, unique: true },
-  email: { type: String, required: true, unique: true },
-});
+const adminSchema = new mongoose.Schema(
+  {
+    adminId: { type: String, required: true, unique: true }, // Changed to uuid
+    username: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    fullName: { type: String, required: true },
+    aadharId: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true },
+  },
+  {
+    timestamps: true,
+  }
+);
 
 // Password hashing middleware
 adminSchema.pre("save", async function (next) {
